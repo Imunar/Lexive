@@ -7,7 +7,7 @@ import os
 from discord.ext import commands
 
 import config
-
+import random
 # the following characters will be stripped from the csv names when stored
 # and also ignored from messages (so that they are optional)
 # this is a sequence of 1-length strings
@@ -218,7 +218,7 @@ def load():
             blist = []
             for pos, breach in zip(breaches.split(","), (b1, b2, b3, b4)):
                 pos = int(pos)
-                if not breach: # just a regular breach
+                if not breach:  # just a regular breach
                     breach = None
                 blist.append((pos, breach))
             player_mats[casefold(name)].append({
@@ -301,8 +301,13 @@ class Lexive(commands.Bot):
             if not content:
                 return
 
+            if str(content).startswith('!random'):
+                log("HELLP!")
+                await randomize(content, message)
+                return;
             values, asset = get_card(content)
-            log("REQ:", content)
+            log("REQ:2", content)
+
             if values and values[0] is None: # too many values
                 await message.channel.send(f"Ambiguous value. Possible matches: {', '.join(values[1:])}")
                 return
@@ -318,6 +323,99 @@ class Lexive(commands.Bot):
         await super().on_message(message)
 
 bot = Lexive(command_prefix=config.prefix, owner_id=config.owner, case_insensitive=True, activity=activity)
+
+
+@bot.command()
+async def randomize(content, message):
+    max_mages = 2
+    max_spells = 4
+    max_gems = 3
+    max_relics = 2
+
+    #some args should be like: expansion ignored or complexity
+    log("OK Start Ranomize")
+
+   #Random Nemesis
+    msg = "Ok why don't you try out this Challange? \n \n"
+    msg += "You play against: \n"
+    card = random.choice(list(nemesis_mats.values()))
+
+    msg += card[0]['name']
+
+    #Random Mages
+    mages = []
+    log(len(player_mats))
+    while len(mages) < max_mages:
+        mage = random.choice(list(player_mats.values()))
+        if mage not in mages:
+            mages.append(mage)
+
+    msg += "\n\n With These Mages:"
+    for addMage in mages:
+        msg += "\n "
+        msg += addMage[0]['name']
+
+    # Random Gems
+    gems = []
+    first_gem = True
+    while len(gems) < max_gems:
+        gem = random.choice(list(player_cards.values()))
+        if gem[0]['type'] != 'G' or gem[0]['starter'] != '':
+            continue
+        if first_gem == True:
+            if gem[0]['cost'] > 3:
+                continue
+
+
+        if gem not in gems:
+            gems.append(gem)
+            first_gem = False
+
+    msg += "\n\n Market Gems:"
+    for addGem in gems:
+        msg += "\n "
+        msg += addGem[0]['name']
+        msg += " ("
+        msg += str(addGem[0]['cost'])
+        msg += ")"
+        # Random Gems
+
+    relics = []
+    while len(relics) < max_relics:
+        relic = random.choice(list(player_cards.values()))
+        log(relic)
+        if relic[0]['type'] != 'R' or relic[0]['starter'] != '':
+            continue
+        if relic not in relics:
+            relics.append(relic)
+
+    msg += "\n\n Market Relics:"
+    for addRelic in relics:
+        msg += "\n "
+        msg += addRelic[0]['name']
+        msg += " ("
+        msg += str(addRelic[0]['cost'])
+        msg += ")"
+
+    spells = []
+    while len(spells) < max_spells:
+        spell = random.choice(list(player_cards.values()))
+        if spell[0]['type'] != 'S' or spell[0]['starter'] != '':
+            continue
+        if spell not in spells:
+            spells.append(spell)
+
+    msg += "\n\n Market Spells:"
+    for addSpell in spells:
+        msg += "\n "
+        msg += addSpell[0]['name']
+        msg += " ("
+        msg += str(addSpell[0]['cost'])
+        msg += ")"
+
+    log(msg)
+    await message.channel.send(msg)
+
 
 @sync(mechanics)
 def unique_handler(name: str) -> List[str]:
