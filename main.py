@@ -32,6 +32,10 @@ nemesis_mats = defaultdict(list)
 breach_values = defaultdict(list)
 treasure_values = defaultdict(list)
 
+# market cards grouped by type
+market_gems = defaultdict(list)
+market_relics = defaultdict(list)
+market_spells = defaultdict(list)
 content_dicts = []
 
 def sync(d):
@@ -162,6 +166,31 @@ def load():
                 "flavour": expand(flavour), "starter": starter, "box": box,
                 "deck": deck, "start": start, "end": end
             })
+            # if not an unique card put into market dict too
+            if not "unique" in code and not starter:
+                if ctype == 'G' :
+                    market_gems[casefold(name)].append({
+                        "name": name, "type": ctype, "cost": int(cost), "code": code,
+                        "special": expand(special, prefix=True), "text": expand(text),
+                        "flavour": expand(flavour), "starter": starter, "box": box,
+                        "deck": deck, "start": start, "end": end
+                    })
+                elif ctype == 'R' :
+                    market_relics[casefold(name)].append({
+                        "name": name, "type": ctype, "cost": int(cost), "code": code,
+                        "special": expand(special, prefix=True), "text": expand(text),
+                        "flavour": expand(flavour), "starter": starter, "box": box,
+                        "deck": deck, "start": start, "end": end
+                    })
+                elif ctype == 'S' :
+                    market_spells[casefold(name)].append({
+                        "name": name, "type": ctype, "cost": int(cost), "code": code,
+                        "special": expand(special, prefix=True), "text": expand(text),
+                        "flavour": expand(flavour), "starter": starter, "box": box,
+                        "deck": deck, "start": start, "end": end
+                    })
+
+
             nums = [start]
             if end and not starter:
                 nums = range(start, end+1)
@@ -300,13 +329,11 @@ class Lexive(commands.Bot):
             content = message.content.lstrip(config.prefix)
             if not content:
                 return
-
             if str(content).startswith('!random'):
-                log("HELLP!")
                 await randomize(content, message)
                 return;
             values, asset = get_card(content)
-            log("REQ:2", content)
+            log("REQ:", content)
 
             if values and values[0] is None: # too many values
                 await message.channel.send(f"Ambiguous value. Possible matches: {', '.join(values[1:])}")
@@ -332,6 +359,43 @@ async def randomize(content, message):
     max_gems = 3
     max_relics = 2
 
+    split_content = content.split()
+
+    if len(split_content) % 2 < 1:
+        msg = "Wrong argument count"
+        log(msg)
+        await message.channel.send(msg)
+        return
+
+    params = {}
+    for i in range(1, len(split_content)-1, 2):
+        params[split_content[i]] = split_content[i+1]
+
+    if params["-p"]:
+        if not isInt(params["-p"]) or not int(params["-p"]) in range(1, 5):
+            msg = "Wrong argument -p must be between 1 and 4 : -p 3"
+            log(msg)
+            await message.channel.send(msg)
+            return
+        max_mages = int(params["-p"])
+
+
+    if params["-m"]:
+        if not len(params["-m"]) == 3 or not isInt(params["-m"]):
+            msg = "Wrong argument -m must be GRS : -m 324"
+            log(msg)
+            await message.channel.send(msg)
+            return
+        max_gems = int(params["-m"][0])
+        max_relics = int(params["-m"][1])
+        max_spells = int(params["-m"][2])
+
+    if (max_spells + max_gems + max_relics) != 9:
+        msg = "Market wont sum up to 9!"
+        log(msg)
+        await message.channel.send(msg)
+        return
+
     #some args should be like: expansion ignored or complexity
     log("OK Start Ranomize")
 
@@ -344,7 +408,7 @@ async def randomize(content, message):
 
     #Random Mages
     mages = []
-    log(len(player_mats))
+    #log(len(player_mats))
     while len(mages) < max_mages:
         mage = random.choice(list(player_mats.values()))
         if mage not in mages:
@@ -359,14 +423,10 @@ async def randomize(content, message):
     gems = []
     first_gem = True
     while len(gems) < max_gems:
-        gem = random.choice(list(player_cards.values()))
-        if gem[0]['type'] != 'G' or gem[0]['starter'] != '':
-            continue
-        if first_gem == True:
+        gem = random.choice(list(market_gems.values()))
+        if first_gem:
             if gem[0]['cost'] > 3:
                 continue
-
-
         if gem not in gems:
             gems.append(gem)
             first_gem = False
@@ -382,10 +442,8 @@ async def randomize(content, message):
 
     relics = []
     while len(relics) < max_relics:
-        relic = random.choice(list(player_cards.values()))
-        log(relic)
-        if relic[0]['type'] != 'R' or relic[0]['starter'] != '':
-            continue
+        relic = random.choice(list(market_relics.values()))
+#        log(relic)
         if relic not in relics:
             relics.append(relic)
 
@@ -399,9 +457,7 @@ async def randomize(content, message):
 
     spells = []
     while len(spells) < max_spells:
-        spell = random.choice(list(player_cards.values()))
-        if spell[0]['type'] != 'S' or spell[0]['starter'] != '':
-            continue
+        spell = random.choice(list(market_spells.values()))
         if spell not in spells:
             spells.append(spell)
 
@@ -416,6 +472,12 @@ async def randomize(content, message):
     log(msg)
     await message.channel.send(msg)
 
+def isInt(value):
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False
 
 @sync(mechanics)
 def unique_handler(name: str) -> List[str]:
