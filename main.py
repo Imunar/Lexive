@@ -358,6 +358,12 @@ async def randomize(content, message):
     max_spells = 4
     max_gems = 3
     max_relics = 2
+    min_complexity = 1
+    max_complexity = 11
+    max_set_complexity = 12
+
+    min_rating = 1
+    max_rating = 10
 
     split_content = content.split()
 
@@ -371,7 +377,7 @@ async def randomize(content, message):
     for i in range(1, len(split_content)-1, 2):
         params[split_content[i]] = split_content[i+1]
 
-    if params["-p"]:
+    if "-p" in params:
         if not isInt(params["-p"]) or not int(params["-p"]) in range(1, 5):
             msg = "Wrong argument -p must be between 1 and 4 : -p 3"
             log(msg)
@@ -379,8 +385,7 @@ async def randomize(content, message):
             return
         max_mages = int(params["-p"])
 
-
-    if params["-m"]:
+    if "-m" in params:
         if not len(params["-m"]) == 3 or not isInt(params["-m"]):
             msg = "Wrong argument -m must be GRS : -m 324"
             log(msg)
@@ -396,15 +401,42 @@ async def randomize(content, message):
         await message.channel.send(msg)
         return
 
+    if "-minD" in params:
+        if not isInt(params["-minD"]) or not int(params["-minD"]) in range(1, 11):
+            msg = "Wrong argument -minD must be between 1 and 10 : -minD 3"
+            log(msg)
+            await message.channel.send(msg)
+            return
+        min_complexity = int(params["-minD"])
+
+    if "-maxD" in params:
+        if not isInt(params["-maxD"]) or not int(params["-maxD"]) in range(1, 11):
+            msg = "Wrong argument -maxD must be between 1 and 10 : -maxD 8"
+            log(msg)
+            await message.channel.send(msg)
+            return
+        max_complexity = int(params["-maxD"])
+
+    if max_complexity < min_complexity:
+        max_complexity = min_complexity+1
+    if min_complexity > max_complexity:
+        min_complexity = max_complexity-1
+    if min_complexity > max_set_complexity:
+        min_complexity = max_set_complexity-1
+
     #some args should be like: expansion ignored or complexity
-    log("OK Start Ranomize")
 
    #Random Nemesis
     msg = "Ok why don't you try out this Challange? \n \n"
     msg += "You play against: \n"
-    card = random.choice(list(nemesis_mats.values()))
+    card = []
+    while len(card) == 0:
+        tmp_card = random.choice(list(nemesis_mats.values()))
+        if int(tmp_card[0]['difficulty']) >= min_complexity and int(tmp_card[0]['difficulty']) <= max_complexity :
+            card = tmp_card
 
     msg += card[0]['name']
+    msg += " (%s)" % card[0]['difficulty']
 
     #Random Mages
     mages = []
